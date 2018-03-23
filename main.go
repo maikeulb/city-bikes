@@ -1,12 +1,12 @@
 package main
 
 import (
-	"github.com/maikeulb/city-bike/redis"
+	r "github.com/maikeulb/city-bikes/redis"
 )
 
 func main() {
 	a := App{}
-	a.Initialize()
-	redis.SetupRedisCodec()
+	a.InitializeServer()
+	r.InitializeRedis()
 	a.Run(":5000")
 }

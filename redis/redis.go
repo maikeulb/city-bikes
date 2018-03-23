@@ -9,11 +9,11 @@ import (
 
 var Codec *cache.Codec
 
-func SetupRedisCodec() {
+func InitializeRedis() {
 	client := redis.NewClient(&redis.Options{
 		Addr:     "172.17.0.3:6379",
-		Password: "", // no password set
-		DB:       0,  // use default DB
+		Password: "",
+		DB:       0,
 	})
 
 	Codec = &cache.Codec{

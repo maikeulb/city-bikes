@@ -9,7 +9,7 @@ import (
 	"os"
 	"time"
 
-	"github.com/maikeulb/city-bike/redis"
+	"github.com/maikeulb/city-bikes/redis"
 
 	"github.com/go-redis/cache"
 	"github.com/gorilla/mux"
@@ -19,7 +19,7 @@ type App struct {
 	Router *mux.Router
 }
 
-func (a *App) Initialize() {
+func (a *App) InitializeServer() {
 	a.Router = mux.NewRouter()
 	a.initializeRoutes()
 }
@@ -35,67 +35,69 @@ func (a *App) initializeRoutes() {
 
 func (a *App) getNetworks(w http.ResponseWriter, r *http.Request) {
 
-	queryStr := "all_networks"
+	cacheKey := "all_networks"
+	log.Println("cache key - ", cacheKey)
 
-	var responseObject NetworksResponse
+	var networks NetworksResponse
 	startQuery := time.Now()
-	if err := redis.Codec.Get(queryStr, &responseObject); err != nil {
+	if err := redis.Codec.Get(cacheKey, &networks); err != nil {
 
-		log.Println("Remote networks")
 		response, err := http.Get("http://api.citybik.es/v2/networks")
 		if err != nil {
 			fmt.Print(err.Error())
 			os.Exit(1)
 		}
 
-		responseData, err := ioutil.ReadAll(response.Body)
+		serializedNetworks, err := ioutil.ReadAll(response.Body)
 		if err != nil {
 			log.Fatal(err)
 		}
 
-		json.Unmarshal(responseData, &responseObject)
+		json.Unmarshal(serializedNetworks, &networks)
 
-		updateCacheNetworksResponse(queryStr, responseObject)
+		updateCacheNetworksResponse(cacheKey, networks)
+		endQuery := time.Now()
+		log.Println("retrieved networks from remote api in ", endQuery.Sub(startQuery), " seconds")
 	} else {
-		log.Println("Cached networks")
+		endQuery := time.Now()
+		log.Println("retrieved networks from cache in ", endQuery.Sub(startQuery), " seconds")
 	}
-	endQuery := time.Now()
-	log.Println("Got networks in ", endQuery.Sub(startQuery), " seconds")
 
-	respondWithJSON(w, http.StatusOK, responseObject)
+	respondWithJSON(w, http.StatusOK, networks)
 }
 
 func (a *App) getNetwork(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	id := vars["id"]
-	queryStr := id
+	cacheKey := id
+	log.Println("cache key - ", cacheKey)
 
-	var responseObject NetworkResponse
+	var network NetworkResponse
 	startQuery := time.Now()
-	if err := redis.Codec.Get(queryStr, &responseObject); err != nil {
+	if err := redis.Codec.Get(cacheKey, &network); err != nil {
 
-		log.Println("Remote network location")
 		response, err := http.Get("http://api.citybik.es/v2/networks/" + id)
 		if err != nil {
 			fmt.Print(err.Error())
 			os.Exit(1)
 		}
 
-		responseData, err := ioutil.ReadAll(response.Body)
+		serializedNetwork, err := ioutil.ReadAll(response.Body)
 		if err != nil {
 			log.Fatal(err)
 		}
 
-		json.Unmarshal(responseData, &responseObject)
+		json.Unmarshal(serializedNetwork, &network)
 
-		updateCacheNetworkResponse(queryStr, responseObject)
+		updateCacheNetworkResponse(cacheKey, network)
+		endQuery := time.Now()
+		log.Println("retrieved network from remote api in ", endQuery.Sub(startQuery), " seconds")
 	} else {
-		log.Println("Cached network location")
+		endQuery := time.Now()
+		log.Println("retrieved network from cache in ", endQuery.Sub(startQuery), " seconds")
 	}
-	endQuery := time.Now()
-	log.Println("Got network location in ", endQuery.Sub(startQuery), " seconds")
 
-	respondWithJSON(w, http.StatusOK, responseObject)
+	respondWithJSON(w, http.StatusOK, network)
 }
 
 func respondWithError(w http.ResponseWriter, code int, message string) {
@@ -110,18 +112,18 @@ func respondWithJSON(w http.ResponseWriter, code int, payload interface{}) {
 	w.Write(response)
 }
 
-func updateCacheNetworksResponse(key string, responseObject NetworksResponse) {
+func updateCacheNetworksResponse(key string, networks NetworksResponse) {
 	redis.Codec.Set(&cache.Item{
 		Key:        key,
-		Object:     responseObject,
+		Object:     networks,
 		Expiration: time.Hour,
 	})
 }
 
-func updateCacheNetworkResponse(key string, responseObject NetworkResponse) {
+func updateCacheNetworkResponse(key string, network NetworkResponse) {
 	redis.Codec.Set(&cache.Item{
 		Key:        key,
-		Object:     responseObject,
+		Object:     network,
 		Expiration: time.Hour,
 	})
 }
