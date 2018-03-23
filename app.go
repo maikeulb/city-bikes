@@ -37,7 +37,6 @@ func (a *App) getNetworks(w http.ResponseWriter, r *http.Request) {
 
 	queryStr := "all_networks"
 
-	// responseObject := []NetworksResponse{}
 	var responseObject NetworksResponse
 	startQuery := time.Now()
 	if err := redis.Codec.Get(queryStr, &responseObject); err != nil {
@@ -56,7 +55,7 @@ func (a *App) getNetworks(w http.ResponseWriter, r *http.Request) {
 
 		json.Unmarshal(responseData, &responseObject)
 
-		updateCache(queryStr, responseObject)
+		updateCacheNetworksResponse(queryStr, responseObject)
 	} else {
 		log.Println("Cached networks")
 	}
@@ -69,20 +68,32 @@ func (a *App) getNetworks(w http.ResponseWriter, r *http.Request) {
 func (a *App) getNetwork(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	id := vars["id"]
-
-	response, err := http.Get("http://api.citybik.es/v2/networks/" + id)
-	if err != nil {
-		fmt.Print(err.Error())
-		os.Exit(1)
-	}
-
-	responseData, err := ioutil.ReadAll(response.Body)
-	if err != nil {
-		log.Fatal(err)
-	}
+	queryStr := id
 
 	var responseObject NetworkResponse
-	json.Unmarshal(responseData, &responseObject)
+	startQuery := time.Now()
+	if err := redis.Codec.Get(queryStr, &responseObject); err != nil {
+
+		log.Println("Remote network location")
+		response, err := http.Get("http://api.citybik.es/v2/networks/" + id)
+		if err != nil {
+			fmt.Print(err.Error())
+			os.Exit(1)
+		}
+
+		responseData, err := ioutil.ReadAll(response.Body)
+		if err != nil {
+			log.Fatal(err)
+		}
+
+		json.Unmarshal(responseData, &responseObject)
+
+		updateCacheNetworkResponse(queryStr, responseObject)
+	} else {
+		log.Println("Cached network location")
+	}
+	endQuery := time.Now()
+	log.Println("Got network location in ", endQuery.Sub(startQuery), " seconds")
 
 	respondWithJSON(w, http.StatusOK, responseObject)
 }
@@ -99,7 +110,15 @@ func respondWithJSON(w http.ResponseWriter, code int, payload interface{}) {
 	w.Write(response)
 }
 
-func updateCache(key string, responseObject NetworksResponse) {
+func updateCacheNetworksResponse(key string, responseObject NetworksResponse) {
+	redis.Codec.Set(&cache.Item{
+		Key:        key,
+		Object:     responseObject,
+		Expiration: time.Hour,
+	})
+}
+
+func updateCacheNetworkResponse(key string, responseObject NetworkResponse) {
 	redis.Codec.Set(&cache.Item{
 		Key:        key,
 		Object:     responseObject,
