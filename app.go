@@ -7,6 +7,7 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"strconv"
 
 	"github.com/gorilla/mux"
 )
@@ -26,7 +27,7 @@ func (a *App) Run(addr string) {
 
 func (a *App) initializeRoutes() {
 	a.Router.HandleFunc("/api/networks", a.getNetworks).Methods("GET")
-	// a.Router.HandleFunc("/networks/{id}", a.getNetwork).Methods("GET")
+	a.Router.HandleFunc("/api/networks/bbbike", a.getNetwork).Methods("GET")
 }
 
 func (a *App) getNetworks(w http.ResponseWriter, r *http.Request) {
@@ -41,30 +42,36 @@ func (a *App) getNetworks(w http.ResponseWriter, r *http.Request) {
 		log.Fatal(err)
 	}
 
-	var responseObject Response
+	var responseObject NetworksResponse
 	json.Unmarshal(responseData, &responseObject)
-	fmt.Println(responseObject)
-	fmt.Println(len(responseObject.Networks))
 
 	respondWithJSON(w, http.StatusOK, responseObject)
 }
 
-// func (a *App) getNetwork(w http.ResponseWriter, r *http.Request) {
-// 	vars := mux.Vars(r)
-// 	id, err := strconv.Atoi(vars["id"])
-// 	if err != nil {
-// 		respondWithError(w, http.StatusBadRequest, "Invalid product ID")
-// 		return
-// 	}
+func (a *App) getNetwork(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	id, err := strconv.Atoi(vars["id"])
+	// if err != nil {
+	// respondWithError(w, http.StatusBadRequest, "Invalid network ID")
+	// return
+	// }
 
-// 	n := network{ID: id}
-// 	if err := p.getNetwork(); err != nil {
-// 	    respondWithError(w, http.StatusInternalServerError, err.Error())
-// 		return
-// 	}
+	response, err := http.Get("http://api.citybik.es/v2/networks/" + "bbbike")
+	if err != nil {
+		fmt.Print(err.Error())
+		os.Exit(1)
+	}
+	fmt.Print(id)
+	responseData, err := ioutil.ReadAll(response.Body)
+	if err != nil {
+		log.Fatal(err)
+	}
 
-// 	respondWithJSON(w, http.StatusOK, p)
-// }
+	var responseObject NetworkResponse
+	json.Unmarshal(responseData, &responseObject)
+
+	respondWithJSON(w, http.StatusOK, responseObject)
+}
 
 func respondWithError(w http.ResponseWriter, code int, message string) {
 	respondWithJSON(w, code, map[string]string{"error": message})
