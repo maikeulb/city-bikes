@@ -7,6 +7,6 @@ import (
 func main() {
 	a := App{}
 	a.Initialize()
-	a.Run(":5000")
 	redis.SetupRedisCodec()
+	a.Run(":5000")
 }

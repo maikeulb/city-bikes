@@ -7,7 +7,11 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"time"
 
+	"github.com/maikeulb/city-bike/redis"
+
+	"github.com/go-redis/cache"
 	"github.com/gorilla/mux"
 )
 
@@ -30,19 +34,34 @@ func (a *App) initializeRoutes() {
 }
 
 func (a *App) getNetworks(w http.ResponseWriter, r *http.Request) {
-	response, err := http.Get("http://api.citybik.es/v2/networks")
-	if err != nil {
-		fmt.Print(err.Error())
-		os.Exit(1)
-	}
 
-	responseData, err := ioutil.ReadAll(response.Body)
-	if err != nil {
-		log.Fatal(err)
-	}
+	queryStr := "all_networks"
 
+	// responseObject := []NetworksResponse{}
 	var responseObject NetworksResponse
-	json.Unmarshal(responseData, &responseObject)
+	startQuery := time.Now()
+	if err := redis.Codec.Get(queryStr, &responseObject); err != nil {
+
+		log.Println("Remote networks")
+		response, err := http.Get("http://api.citybik.es/v2/networks")
+		if err != nil {
+			fmt.Print(err.Error())
+			os.Exit(1)
+		}
+
+		responseData, err := ioutil.ReadAll(response.Body)
+		if err != nil {
+			log.Fatal(err)
+		}
+
+		json.Unmarshal(responseData, &responseObject)
+
+		updateCache(queryStr, responseObject)
+	} else {
+		log.Println("Cached networks")
+	}
+	endQuery := time.Now()
+	log.Println("Got networks in ", endQuery.Sub(startQuery), " seconds")
 
 	respondWithJSON(w, http.StatusOK, responseObject)
 }
@@ -78,4 +97,12 @@ func respondWithJSON(w http.ResponseWriter, code int, payload interface{}) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(code)
 	w.Write(response)
+}
+
+func updateCache(key string, responseObject NetworksResponse) {
+	redis.Codec.Set(&cache.Item{
+		Key:        key,
+		Object:     responseObject,
+		Expiration: time.Hour,
+	})
 }

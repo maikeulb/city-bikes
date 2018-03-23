@@ -10,14 +10,14 @@ import (
 var Codec *cache.Codec
 
 func SetupRedisCodec() {
-	ring := redis.NewRing(&redis.RingOptions{
-		Addrs: map[string]string{
-			"server1": "172.17.0.3:6379",
-		},
+	client := redis.NewClient(&redis.Options{
+		Addr:     "172.17.0.3:6379",
+		Password: "", // no password set
+		DB:       0,  // use default DB
 	})
 
 	Codec = &cache.Codec{
-		Redis: ring,
+		Redis: client,
 
 		Marshal: func(v interface{}) ([]byte, error) {
 			return json.Marshal(v)
