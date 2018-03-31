@@ -9,10 +9,9 @@ import (
 	"os"
 	"time"
 
-	"github.com/maikeulb/city-bikes/redis"
-
 	"github.com/go-redis/cache"
 	"github.com/gorilla/mux"
+	"github.com/maikeulb/city-bikes/redis"
 )
 
 type App struct {
@@ -25,6 +24,8 @@ func (a *App) InitializeServer() {
 }
 
 func (a *App) Run(addr string) {
+	fmt.Println("/api/networks")
+	fmt.Println("/api/networks/{id}")
 	log.Fatal(http.ListenAndServe(addr, a.Router))
 }
 
@@ -34,14 +35,12 @@ func (a *App) initializeRoutes() {
 }
 
 func (a *App) getNetworks(w http.ResponseWriter, r *http.Request) {
-
 	cacheKey := "all_networks"
 	log.Println("cache key - ", cacheKey)
 
 	var networks NetworksResponse
 	startQuery := time.Now()
 	if err := redis.Codec.Get(cacheKey, &networks); err != nil {
-
 		response, err := http.Get("http://api.citybik.es/v2/networks")
 		if err != nil {
 			fmt.Print(err.Error())
