@@ -11,8 +11,6 @@ RUN CGO_ENABLED=0 GOOS=linux go build -o city-bikes -a -installsuffix cgo main.g
 
 FROM alpine:latest
 
-RUN apk --no-cache add ca-certificates
-
 RUN mkdir /app
 WORKDIR /app
 COPY --from=builder /go/src/github.com/maikeulb/city-bikes .
