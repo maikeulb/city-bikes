@@ -24,6 +24,7 @@ func (a *App) InitializeServer() {
 }
 
 func (a *App) Run(addr string) {
+	fmt.Println("Listening on port: 5000")
 	fmt.Println("/api/networks")
 	fmt.Println("/api/networks/{id}")
 	log.Fatal(http.ListenAndServe(addr, a.Router))
@@ -56,10 +57,10 @@ func (a *App) getNetworks(w http.ResponseWriter, r *http.Request) {
 
 		updateCacheNetworksResponse(cacheKey, networks)
 		endQuery := time.Now()
-		log.Println("retrieved networks from remote api in ", endQuery.Sub(startQuery), " seconds")
+		log.Println("retrieved networks from remote api in ", endQuery.Sub(startQuery))
 	} else {
 		endQuery := time.Now()
-		log.Println("retrieved networks from cache in ", endQuery.Sub(startQuery), " seconds")
+		log.Println("retrieved networks from cache in ", endQuery.Sub(startQuery))
 	}
 
 	respondWithJSON(w, http.StatusOK, networks)
